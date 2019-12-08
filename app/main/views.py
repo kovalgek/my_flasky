@@ -5,12 +5,20 @@ from ..decorators import admin_required, permission_required
 from ..models import Permission
 from ..models import User
 from ..models import Role
-from .forms import EditProfileForm, EditProfileAdminForm
+from ..models import Post
+from .forms import EditProfileForm, EditProfileAdminForm, PostForm
 from .. import db
 
-@main.route('/')
+@main.route('/', methods=['GET','POST'])
 def index():
-    return render_template('index.html')
+    form = PostForm()
+    if current_user.can(Permission.WRITE_ARTICLES) and form.validate_on_submit():
+        post = Post(body=form.body.data, author=current_user._get_current_object())
+        db.session.add(post)
+        db.session.commit()
+        return redirect(url_for('.index'))
+    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    return render_template('index.html', form=form, posts=posts)
 
 @main.route('/admin')
 @login_required
