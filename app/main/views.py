@@ -22,6 +22,12 @@ def index():
     posts = pagination.items
     return render_template('index.html', form=form, posts=posts, pagination=pagination)
 
+@main.route('/post/<int:id>')
+def post(id):
+    post = Post.query.get_or_404(id)
+    print('post',post)
+    return render_template('post.html', posts=[post])
+
 @main.route('/admin')
 @login_required
 @permission_required(Permission.ADMINISTER)
