@@ -5,6 +5,8 @@ from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from flask import current_app, request
 from datetime import datetime
 import hashlib
+import bleach
+from markdown import markdown
 
 class Permission:
     FOLLOW = 0x01
@@ -207,6 +209,7 @@ class Post(db.Model):
     __tablename__ = 'posts'
     id = db.Column(db.Integer, primary_key=True)
     body = db.Column(db.Text)
+    body_html = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
@@ -225,3 +228,14 @@ class Post(db.Model):
                      author=u)
             db.session.add(u)
             db.session.commit()
+
+    @staticmethod
+    def on_change_body(target, value, oldvalue, initiator):
+        allowed_tags = ['a', 'abbr', 'acronym', 'b', 'blockquote', 'code',
+                        'em', 'i', 'li', 'ol', 'pre', 'strong', 'ul',
+                        'h1', 'h2', 'h3', 'p']
+        markdown_value = markdown(value, output_format='html')
+        cleaned_value = bleach.clean(markdown_value, tags=allowed_tags, strip=True)
+        target.body_html = bleach.linkify(cleaned_value)
+
+db.event.listen(Post.body, 'set', Post.on_change_body)
